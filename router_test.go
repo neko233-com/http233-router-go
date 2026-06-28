@@ -22,7 +22,7 @@ func TestFindRoute(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		node, _ := r.findRoute(tt.path)
+		node, _ := r.findRoute(tt.path, nil)
 		if tt.wantNil {
 			if node != nil {
 				t.Errorf("findRoute(%q) = %v, want nil", tt.path, node)
@@ -39,19 +39,19 @@ func TestGetHandler(t *testing.T) {
 	node := &node{}
 	called := false
 	handler := func(c *Context) { called = true }
-	node.handle.get = handler
+	node.setRoute("GET", nil, handler)
 
-	h := node.getHandler("GET")
-	if h == nil {
-		t.Fatal("getHandler(GET) = nil")
+	entry := node.getRouteEntry("GET")
+	if entry.handler == nil {
+		t.Fatal("getRouteEntry(GET) = nil")
 	}
-	h(nil)
+	entry.handler(nil)
 	if !called {
 		t.Fatal("handler was not called")
 	}
 
-	if node.getHandler("POST") != nil {
-		t.Fatal("getHandler(POST) should be nil")
+	if node.getRouteEntry("POST").handler != nil {
+		t.Fatal("getRouteEntry(POST) should be nil")
 	}
 }
 
@@ -88,14 +88,15 @@ func TestServeHTTPNotFound(t *testing.T) {
 
 func TestServeHTTPMethodNotAllowed(t *testing.T) {
 	r := New()
+	r.HandleMethodNotAllowed()
 	r.GET("/resource", func(c *Context) {})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/resource", nil)
 	r.ServeHTTP(w, req)
 
-	if w.Code != 404 {
-		t.Errorf("status = %d, want 404", w.Code)
+	if w.Code != 405 {
+		t.Errorf("status = %d, want 405", w.Code)
 	}
 }
 
@@ -197,6 +198,45 @@ func TestMultipleRoutes(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Body.String() != "ab" {
 		t.Errorf("GET /ab body = %q, want %q", w.Body.String(), "ab")
+	}
+}
+
+func TestMultiMethodParamRoute(t *testing.T) {
+	r := New()
+	r.HandleMethodNotAllowed()
+	r.GET("/users/:id", func(c *Context) { c.String(200, "get") })
+	r.PUT("/users/:id", func(c *Context) { c.String(200, "put") })
+	r.GET("/users/:id/profile", func(c *Context) { c.String(200, "profile") })
+
+	tests := []struct {
+		method string
+		path   string
+		want   int
+		body   string
+	}{
+		{"GET", "/users/123", 200, "get"},
+		{"PUT", "/users/123", 200, "put"},
+		{"GET", "/users/123/profile", 200, "profile"},
+	}
+
+	for _, tc := range tests {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(tc.method, tc.path, nil))
+		if w.Code != tc.want || w.Body.String() != tc.body {
+			t.Errorf("%s %s: got %d %q want %d %q", tc.method, tc.path, w.Code, w.Body.String(), tc.want, tc.body)
+		}
+	}
+}
+
+func TestStaticBeforeParam(t *testing.T) {
+	r := New()
+	r.GET("/users/search", func(c *Context) { c.String(200, "search") })
+	r.GET("/users/:id", func(c *Context) { c.String(200, "%s", c.Param("id")) })
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/users/search", nil))
+	if w.Body.String() != "search" {
+		t.Errorf("got %q", w.Body.String())
 	}
 }
 

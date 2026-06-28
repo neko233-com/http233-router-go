@@ -1,13 +1,13 @@
 package http233
 
-func (r *Router) addRoute(method, path string, handler handlerFunc) {
+func (r *Router) addRoute(method, path string, handler HandlerFunc, mws []HandlerFunc) {
 	if len(path) == 0 {
 		panic("http233: route path cannot be empty")
 	}
-	r.insertRoute(&r.root, method, path, handler)
+	r.insertRoute(&r.root, method, path, handler, mws)
 }
 
-func (r *Router) insertRoute(slot *node, method, path string, handler handlerFunc) {
+func (r *Router) insertRoute(slot *node, method, path string, handler HandlerFunc, mws []HandlerFunc) {
 	if len(path) > 0 && (path[0] == ':' || path[0] == '*') {
 		isWildcard := path[0] == '*'
 		rest := path[1:]
@@ -27,9 +27,9 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 			child := slot.children[j]
 			if child.nType == nType && child.paramName == paramName {
 				if len(remaining) == 0 {
-					child.setHandler(method, handler)
+					child.setRoute(method, mws, handler)
 				} else {
-					r.insertRoute(child, method, remaining, handler)
+					r.insertRoute(child, method, remaining, handler, mws)
 				}
 				return
 			}
@@ -37,9 +37,9 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 		for _, child := range slot.overflow {
 			if child.nType == nType && child.paramName == paramName {
 				if len(remaining) == 0 {
-					child.setHandler(method, handler)
+					child.setRoute(method, mws, handler)
 				} else {
-					r.insertRoute(child, method, remaining, handler)
+					r.insertRoute(child, method, remaining, handler, mws)
 				}
 				return
 			}
@@ -48,32 +48,32 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 		child := &node{nType: nType, paramName: paramName}
 		slot.addChild(child)
 		if len(remaining) == 0 {
-			child.setHandler(method, handler)
+			child.setRoute(method, mws, handler)
 		} else {
-			r.insertRoute(child, method, remaining, handler)
+			r.insertRoute(child, method, remaining, handler, mws)
 		}
 		return
 	}
 
 	prefixLen := slot.findLongestPrefix(path)
 
-	if prefixLen == 0 && slot.prefixLen > 0 {
-		r.createChildOrRecurse(slot, method, path, handler)
+	if prefixLen == 0 && len(slot.prefix) > 0 {
+		r.createChildOrRecurse(slot, method, path, handler, mws)
 		return
 	}
 
-	if prefixLen == uint8(len(path)) && prefixLen == slot.prefixLen {
-		slot.setHandler(method, handler)
+	if int(prefixLen) == len(path) && int(prefixLen) == len(slot.prefix) {
+		slot.setRoute(method, mws, handler)
 		return
 	}
 
-	if prefixLen < slot.prefixLen {
-		remaining := slot.prefixLen - prefixLen
-		child := r.allocateNode(slot.nType, "")
-		copy(child.prefix[:], slot.prefix[prefixLen:slot.prefixLen])
-		child.prefixLen = remaining
-		child.handle = slot.handle
-		child.paramName = slot.paramName
+	if int(prefixLen) < len(slot.prefix) {
+		child := &node{
+			nType:     slot.nType,
+			prefix:    slot.prefix[prefixLen:],
+			paramName: slot.paramName,
+			handle:    slot.handle,
+		}
 		for i := uint8(0); i < slot.childCount; i++ {
 			child.addChild(slot.children[i])
 			slot.children[i] = nil
@@ -87,47 +87,54 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 		slot.childStatic = 0
 
 		slot.nType = nodeStatic
-		slot.prefixLen = prefixLen
+		slot.prefix = path[:prefixLen]
 		slot.paramName = ""
-		copy(slot.prefix[:], path[:prefixLen])
 		slot.handle = methodHandler{}
 		slot.addChild(child)
 
-		if prefixLen == uint8(len(path)) {
-			slot.setHandler(method, handler)
+		if int(prefixLen) == len(path) {
+			slot.setRoute(method, mws, handler)
 		} else {
-			r.createChildOrRecurse(slot, method, path[prefixLen:], handler)
+			r.createChildOrRecurse(slot, method, path[prefixLen:], handler, mws)
 		}
 		return
 	}
 
+	if int(prefixLen) == len(slot.prefix) && int(prefixLen) < len(path) {
+		remaining := path[prefixLen:]
+		if len(remaining) > 0 && (remaining[0] == ':' || remaining[0] == '*') {
+			r.insertRoute(slot, method, remaining, handler, mws)
+			return
+		}
+	}
+
 	next := path[prefixLen]
 	for i := uint8(0); i < slot.childCount; i++ {
-		if slot.children[i].nType == nodeStatic && slot.children[i].prefix[0] == next {
-			r.insertRoute(slot.children[i], method, path[prefixLen:], handler)
+		if slot.children[i].nType == nodeStatic && len(slot.children[i].prefix) > 0 && slot.children[i].prefix[0] == next {
+			r.insertRoute(slot.children[i], method, path[prefixLen:], handler, mws)
 			return
 		}
 	}
 	for _, child := range slot.overflow {
-		if child.nType == nodeStatic && child.prefix[0] == next {
-			r.insertRoute(child, method, path[prefixLen:], handler)
+		if child.nType == nodeStatic && len(child.prefix) > 0 && child.prefix[0] == next {
+			r.insertRoute(child, method, path[prefixLen:], handler, mws)
 			return
 		}
 	}
 
-	r.createChildOrRecurse(slot, method, path[prefixLen:], handler)
+	r.createChildOrRecurse(slot, method, path[prefixLen:], handler, mws)
 }
 
 func (r *Router) allocateNode(nType nodeType, prefix string) *node {
-	n := &node{
-		nType:     nType,
-		prefixLen: uint8(len(prefix)),
-	}
-	copy(n.prefix[:], prefix)
-	return n
+	return &node{nType: nType, prefix: prefix}
 }
 
-func (r *Router) createChildOrRecurse(slot *node, method, path string, handler handlerFunc) {
+func (r *Router) createChildOrRecurse(slot *node, method, path string, handler HandlerFunc, mws []HandlerFunc) {
+	if len(path) > 0 && (path[0] == ':' || path[0] == '*') {
+		r.insertRoute(slot, method, path, handler, mws)
+		return
+	}
+
 	splitIdx := -1
 	for i := 0; i < len(path); i++ {
 		if path[i] == ':' || path[i] == '*' {
@@ -138,10 +145,10 @@ func (r *Router) createChildOrRecurse(slot *node, method, path string, handler h
 	if splitIdx > 0 {
 		child := r.allocateNode(nodeStatic, path[:splitIdx])
 		slot.addChild(child)
-		r.insertRoute(child, method, path[splitIdx:], handler)
+		r.insertRoute(child, method, path[splitIdx:], handler, mws)
 	} else {
 		child := r.allocateNode(nodeStatic, path)
 		slot.addChild(child)
-		child.setHandler(method, handler)
+		child.setRoute(method, mws, handler)
 	}
 }
