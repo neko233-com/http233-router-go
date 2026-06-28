@@ -27,9 +27,20 @@ type node struct {
 	overflow []*node
 
 	// Route data
-	nType    nodeType
-	handle   methodHandler
-	priority uint16 // For tree balancing
+	nType      nodeType
+	paramName  string
+	handle     methodHandler
+	priority   uint16 // For tree balancing
+}
+
+// paramNode stores parameter name for :id style routes
+type paramNode struct {
+	node
+}
+
+// wildcardNode handles catch-all *path routes
+type wildcardNode struct {
+	node
 }
 
 // methodHandler stores handlers for different HTTP methods

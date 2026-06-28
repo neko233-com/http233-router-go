@@ -8,6 +8,53 @@ func (r *Router) addRoute(method, path string, handler handlerFunc) {
 }
 
 func (r *Router) insertRoute(slot *node, method, path string, handler handlerFunc) {
+	if len(path) > 0 && (path[0] == ':' || path[0] == '*') {
+		isWildcard := path[0] == '*'
+		rest := path[1:]
+		end := 0
+		for end < len(rest) && rest[end] != '/' {
+			end++
+		}
+		paramName := rest[:end]
+		remaining := rest[end:]
+
+		nType := nodeParam
+		if isWildcard {
+			nType = nodeWildcard
+		}
+
+		for j := uint8(0); j < slot.childCount; j++ {
+			child := slot.children[j]
+			if child.nType == nType && child.paramName == paramName {
+				if len(remaining) == 0 {
+					child.setHandler(method, handler)
+				} else {
+					r.insertRoute(child, method, remaining, handler)
+				}
+				return
+			}
+		}
+		for _, child := range slot.overflow {
+			if child.nType == nType && child.paramName == paramName {
+				if len(remaining) == 0 {
+					child.setHandler(method, handler)
+				} else {
+					r.insertRoute(child, method, remaining, handler)
+				}
+				return
+			}
+		}
+
+		child := &node{nType: nType, paramName: paramName}
+		slot.addChild(child)
+		if len(remaining) == 0 {
+			child.setHandler(method, handler)
+		} else {
+			r.insertRoute(child, method, remaining, handler)
+		}
+		return
+	}
+
 	prefixLen := slot.findLongestPrefix(path)
 
 	if prefixLen == 0 && slot.prefixLen > 0 {
@@ -28,6 +75,7 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 		copy(child.prefix[:], slot.prefix[prefixLen:slot.prefixLen])
 		child.prefixLen = remaining
 		child.handle = slot.handle
+		child.paramName = slot.paramName
 		for i := uint8(0); i < slot.childCount; i++ {
 			child.addChild(slot.children[i])
 			slot.children[i] = nil
@@ -42,6 +90,7 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 
 		slot.nType = nodeStatic
 		slot.prefixLen = prefixLen
+		slot.paramName = ""
 		copy(slot.prefix[:], path[:prefixLen])
 		slot.handle = methodHandler{}
 		slot.addChild(child)
@@ -58,13 +107,13 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 
 	next := path[prefixLen]
 	for i := uint8(0); i < slot.childCount; i++ {
-		if slot.children[i].prefix[0] == next {
+		if slot.children[i].nType == nodeStatic && slot.children[i].prefix[0] == next {
 			r.insertRoute(slot.children[i], method, path[prefixLen:], handler)
 			return
 		}
 	}
 	for _, child := range slot.overflow {
-		if child.prefix[0] == next {
+		if child.nType == nodeStatic && child.prefix[0] == next {
 			r.insertRoute(child, method, path[prefixLen:], handler)
 			return
 		}

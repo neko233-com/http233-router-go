@@ -75,32 +75,25 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (r *Router) findRoute(path string) (*node, []param) {
 	current := &r.root
 	i := 0
+	params := make([]param, 0, r.maxParams)
 
 	for i < len(path) {
 		found := false
 
 		for j := uint8(0); j < current.childCount; j++ {
 			child := current.children[j]
-			if child.nType == nodeStatic {
-				prefixLen := child.findLongestPrefix(path[i:])
-				if prefixLen > 0 && prefixLen == child.prefixLen {
-					current = child
-					i += int(prefixLen)
-					found = true
-					break
-				}
+			if r.matchChild(child, path, &i, &params) {
+				current = child
+				found = true
+				break
 			}
 		}
 		if !found {
 			for _, child := range current.overflow {
-				if child.nType == nodeStatic {
-					prefixLen := child.findLongestPrefix(path[i:])
-					if prefixLen > 0 && prefixLen == child.prefixLen {
-						current = child
-						i += int(prefixLen)
-						found = true
-						break
-					}
+				if r.matchChild(child, path, &i, &params) {
+					current = child
+					found = true
+					break
 				}
 			}
 		}
@@ -109,7 +102,32 @@ func (r *Router) findRoute(path string) (*node, []param) {
 		}
 	}
 
-	return current, nil
+	return current, params
+}
+
+func (r *Router) matchChild(child *node, path string, i *int, params *[]param) bool {
+	switch child.nType {
+	case nodeStatic:
+		prefixLen := child.findLongestPrefix(path[*i:])
+		if prefixLen > 0 && prefixLen == child.prefixLen {
+			*i += int(prefixLen)
+			return true
+		}
+	case nodeParam:
+		start := *i
+		for *i < len(path) && path[*i] != '/' {
+			*i++
+		}
+		if *i > start {
+			*params = append(*params, param{key: child.paramName, value: path[start:*i]})
+			return true
+		}
+	case nodeWildcard:
+		*params = append(*params, param{key: child.paramName, value: path[*i:]})
+		*i = len(path)
+		return true
+	}
+	return false
 }
 
 func (n *node) getHandler(method string) handlerFunc {
