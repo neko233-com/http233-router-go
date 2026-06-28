@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference — http233-router-go</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="logo" href="index.html">http233-router-go</a>
+      <span class="logo-sub">Go HTTP Router</span>
+      <div class="nav-section">Documentation</div>
+      <a class="nav-link" href="index.html">Overview</a>
+      <a class="nav-link" href="guide.html">Getting Started</a>
+      <a class="nav-link active" href="api.html">API Reference</a>
+      <a class="nav-link" href="performance.html">Performance</a>
+      <div class="nav-section">Links</div>
+      <a class="nav-link" href="https://github.com/neko233-com/http233-router-go">GitHub</a>
+      <a class="nav-link" href="https://pkg.go.dev/github.com/neko233-com/http233-router-go">pkg.go.dev</a>
+    </aside>
+
+    <main>
+      <h1>API Reference</h1>
+      <p class="lead">Core types and methods. Full godoc: <a href="https://pkg.go.dev/github.com/neko233-com/http233-router-go">pkg.go.dev</a></p>
+
+      <h2>Router</h2>
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>New()</code></td><td>Create a new router instance.</td></tr>
+          <tr><td><code>Use(mws ...HandlerFunc)</code></td><td>Register global middleware.</td></tr>
+          <tr><td><code>Group(prefix, mws...)</code></td><td>Create a route group.</td></tr>
+          <tr><td><code>GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH</code></td><td>Register method handlers.</td></tr>
+          <tr><td><code>ANY(path, handler)</code></td><td>Register all standard HTTP methods.</td></tr>
+          <tr><td><code>Handler()</code></td><td>Return <code>http.Handler</code> for <code>ListenAndServe</code>.</td></tr>
+          <tr><td><code>HandleMethodNotAllowed()</code></td><td>Return 405 when path exists but method does not.</td></tr>
+          <tr><td><code>RedirectTrailingSlash(bool)</code></td><td>Enable trailing slash redirects.</td></tr>
+          <tr><td><code>SetNotFoundHandler</code> / <code>SetNoMethodHandler</code></td><td>Custom 404 / 405 handlers.</td></tr>
+          <tr><td><code>SetOnError(fn)</code></td><td>Post-chain error callback.</td></tr>
+          <tr><td><code>Static</code> / <code>StaticFS</code> / <code>StaticFile</code></td><td>Static file serving.</td></tr>
+          <tr><td><code>EnableHotReload</code> / <code>DisableHotReload</code></td><td>File watcher for dev assets.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>RouterGroup</h2>
+      <p>Same HTTP method registrars as <code>Router</code>, plus <code>Use()</code>, nested <code>Group()</code>, and group-scoped <code>Static</code> / <code>StaticFS</code>.</p>
+
+      <h2>Context — Middleware</h2>
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>Next()</code></td><td>Advance to the next handler in the chain.</td></tr>
+          <tr><td><code>Abort()</code></td><td>Stop the chain immediately.</td></tr>
+          <tr><td><code>AbortWithStatus(code)</code></td><td>Write status and abort.</td></tr>
+          <tr><td><code>Error(err)</code> / <code>Fail(code, msg)</code></td><td>Collect or fail with errors.</td></tr>
+          <tr><td><code>Set(key, val)</code> / <code>Get(key)</code></td><td>Request-scoped key-value store.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Context — Request &amp; Response</h2>
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>Param(key)</code></td><td>Route parameter value.</td></tr>
+          <tr><td><code>Query(key)</code> / <code>DefaultQuery</code> / <code>QueryArray</code></td><td>Query string helpers.</td></tr>
+          <tr><td><code>BindJSON</code> / <code>ShouldBindJSON</code></td><td>Decode JSON request body.</td></tr>
+          <tr><td><code>Status(code)</code></td><td>Set response status.</td></tr>
+          <tr><td><code>String</code> / <code>JSON</code> / <code>Data</code> / <code>HTML</code></td><td>Response helpers.</td></tr>
+          <tr><td><code>Redirect(code, url)</code></td><td>HTTP redirect.</td></tr>
+          <tr><td><code>File</code> / <code>FileAttachment</code></td><td>Serve files from disk.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Middleware</h2>
+      <table>
+        <thead><tr><th>Function</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>Recovery()</code></td><td>Recover from panics, return 500.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Route Syntax</h2>
+      <table>
+        <thead><tr><th>Pattern</th><th>Example</th><th>Matches</th></tr></thead>
+        <tbody>
+          <tr><td>Static</td><td><code>/api/users</code></td><td>Exact path segments</td></tr>
+          <tr><td>Parameter</td><td><code>/users/:id</code></td><td><code>/users/42</code></td></tr>
+          <tr><td>Wildcard</td><td><code>/files/*path</code></td><td><code>/files/a/b/c</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <p>Next: <a href="performance.html">Performance</a></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
