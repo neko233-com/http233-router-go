@@ -1,9 +1,7 @@
 package http233
 
-import "net/http"
-
-// handlerFunc is the function type for HTTP handlers
-type handlerFunc func(http.ResponseWriter, *http.Request)
+// handlerFunc is the handler function type
+type handlerFunc func(*Context)
 
 // nodeType represents the type of tree node
 type nodeType uint8

@@ -10,7 +10,7 @@ func (r *Router) addRoute(method, path string, handler handlerFunc) {
 func (r *Router) insertRoute(slot *node, method, path string, handler handlerFunc) {
 	prefixLen := slot.findLongestPrefix(path)
 
-	if prefixLen == 0 {
+	if prefixLen == 0 && slot.prefixLen > 0 {
 		child := r.allocateNode(nodeStatic, path)
 		slot.addChild(child)
 		child.setHandler(method, handler)
