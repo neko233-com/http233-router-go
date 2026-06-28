@@ -2,6 +2,8 @@
 
 High-performance HTTP router for Go with a Gin-like API. Optimized radix-tree matching with middleware chains, route groups, and `net/http` compatibility.
 
+**Documentation:** [https://neko233-com.github.io/http233-router-go/](https://neko233-com.github.io/http233-router-go/)
+
 ## Install
 
 ```bash

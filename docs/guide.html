@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started — http233-router-go</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="logo" href="index.html">http233-router-go</a>
+      <span class="logo-sub">Go HTTP Router</span>
+      <div class="nav-section">Documentation</div>
+      <a class="nav-link" href="index.html">Overview</a>
+      <a class="nav-link active" href="guide.html">Getting Started</a>
+      <a class="nav-link" href="api.html">API Reference</a>
+      <a class="nav-link" href="performance.html">Performance</a>
+      <div class="nav-section">Links</div>
+      <a class="nav-link" href="https://github.com/neko233-com/http233-router-go">GitHub</a>
+      <a class="nav-link" href="https://pkg.go.dev/github.com/neko233-com/http233-router-go">pkg.go.dev</a>
+    </aside>
+
+    <main>
+      <h1>Getting Started</h1>
+      <p class="lead">Set up http233-router-go in minutes and build REST APIs with middleware and route groups.</p>
+
+      <h2>Installation</h2>
+      <pre><code>go get github.com/neko233-com/http233-router-go@v0.1.0</code></pre>
+
+      <h2>Basic Server</h2>
+      <pre><code>r := http233.New()
+r.GET("/ping", func(c *http233.Context) {
+    c.String(http.StatusOK, "pong")
+})
+http.ListenAndServe(":8080", r.Handler())</code></pre>
+
+      <h2>Route Parameters</h2>
+      <pre><code>r.GET("/users/:id", func(c *http233.Context) {
+    id := c.Param("id")
+    c.JSON(http.StatusOK, map[string]string{"id": id})
+})
+
+r.GET("/files/*path", func(c *http233.Context) {
+    c.String(http.StatusOK, "path=%s", c.Param("path"))
+})</code></pre>
+
+      <h2>Middleware</h2>
+      <p>Middleware runs in registration order. Call <code>c.Next()</code> to continue the chain, or <code>c.Abort()</code> to stop.</p>
+      <pre><code>r.Use(http233.Recovery())
+
+r.Use(func(c *http233.Context) {
+    start := time.Now()
+    c.Next()
+    log.Printf("%s %s %v", c.Request.Method, c.Request.URL.Path, time.Since(start))
+})
+
+r.GET("/api/data", func(c *http233.Context) {
+    c.JSON(http.StatusOK, map[string]bool{"ok": true})
+})</code></pre>
+
+      <h2>Route Groups</h2>
+      <pre><code>api := r.Group("/api/v1")
+api.Use(authMiddleware)
+
+users := api.Group("/users")
+users.GET("", listUsers)
+users.GET("/:id", getUser)
+users.POST("", createUser)
+
+admin := api.Group("/admin", adminOnly)
+admin.GET("/stats", getStats)</code></pre>
+
+      <h2>Query &amp; JSON Body</h2>
+      <pre><code>r.GET("/search", func(c *http233.Context) {
+    q := c.Query("q")
+    page := c.DefaultQuery("page", "1")
+    c.String(http.StatusOK, "q=%s page=%s", q, page)
+})
+
+r.POST("/users", func(c *http233.Context) {
+    var body struct{ Name string `json:"name"` }
+    if err := c.BindJSON(&body); err != nil {
+        c.AbortWithStatus(http.StatusBadRequest)
+        return
+    }
+    c.JSON(http.StatusCreated, body)
+})</code></pre>
+
+      <h2>Static Files</h2>
+      <pre><code>r.Static("/static", "./public")
+r.StaticFile("/favicon.ico", "./public/favicon.ico")</code></pre>
+
+      <h2>405 &amp; 404</h2>
+      <pre><code>r.HandleMethodNotAllowed()
+r.RedirectTrailingSlash(true)
+
+r.SetNotFoundHandler(func(c *http233.Context) {
+    c.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+})</code></pre>
+
+      <h2>Hot Reload (Development)</h2>
+      <pre><code>r.EnableHotReload("./public", "./templates")
+r.SetHotReloadCallback(func(events []fsnotify.Event) {
+    log.Println("assets changed, refresh cache")
+})
+// r.DisableHotReload()</code></pre>
+
+      <div class="footer">
+        <p>Next: <a href="api.html">API Reference</a></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>http233-router-go — Documentation</title>
+  <meta name="description" content="High-performance HTTP router for Go with Gin-like API">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="logo" href="index.html">http233-router-go</a>
+      <span class="logo-sub">Go HTTP Router</span>
+      <div class="nav-section">Documentation</div>
+      <a class="nav-link active" href="index.html">Overview</a>
+      <a class="nav-link" href="guide.html">Getting Started</a>
+      <a class="nav-link" href="api.html">API Reference</a>
+      <a class="nav-link" href="performance.html">Performance</a>
+      <div class="nav-section">Links</div>
+      <a class="nav-link" href="https://github.com/neko233-com/http233-router-go">GitHub</a>
+      <a class="nav-link" href="https://pkg.go.dev/github.com/neko233-com/http233-router-go">pkg.go.dev</a>
+    </aside>
+
+    <main>
+      <h1>http233-router-go</h1>
+      <p class="lead">High-performance HTTP router for Go with a Gin-like API. Radix-tree matching, middleware chains, route groups, and full <code>net/http</code> compatibility.</p>
+
+      <div class="badge-row">
+        <span class="badge green">Go 1.22+</span>
+        <span class="badge">MIT License</span>
+        <span class="badge">v0.1.0</span>
+      </div>
+
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="guide.html">Get Started</a>
+        <a class="btn" href="https://github.com/neko233-com/http233-router-go">View on GitHub</a>
+      </div>
+
+      <h2>Install</h2>
+      <pre><code>go get github.com/neko233-com/http233-router-go@v0.1.0</code></pre>
+
+      <h2>Quick Example</h2>
+      <pre><code>package main
+
+import (
+    "net/http"
+    http233 "github.com/neko233-com/http233-router-go"
+)
+
+func main() {
+    r := http233.New()
+    r.Use(http233.Recovery())
+
+    r.GET("/", func(c *http233.Context) {
+        c.String(http.StatusOK, "Hello, World!")
+    })
+
+    r.GET("/users/:id", func(c *http233.Context) {
+        c.JSON(http.StatusOK, map[string]string{"id": c.Param("id")})
+    })
+
+    http.ListenAndServe(":8080", r.Handler())
+}</code></pre>
+
+      <h2>Features</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Fast Routing</h3>
+          <p>Optimized radix tree with static, <code>:param</code>, and <code>*wildcard</code> segments. Context pooling on the hot path.</p>
+        </div>
+        <div class="card">
+          <h3>Gin-like API</h3>
+          <p>Middleware chain, route groups, Context helpers — familiar patterns without pulling in Gin.</p>
+        </div>
+        <div class="card">
+          <h3>Production Ready</h3>
+          <p>405/404 handlers, trailing slash redirect, static files, optional hot reload via fsnotify.</p>
+        </div>
+        <div class="card">
+          <h3>Tested</h3>
+          <p>100+ integration routes, concurrent access tests, automated httprouter benchmark validation.</p>
+        </div>
+      </div>
+
+      <h2>Why http233?</h2>
+      <p>Most Go projects need more than bare routing: middleware, groups, JSON helpers, and error recovery. http233-router-go delivers Gin-style ergonomics while keeping routing performance competitive with dedicated routers like httprouter.</p>
+
+      <div class="footer">
+        <p>MIT License · <a href="https://github.com/neko233-com/http233-router-go">neko233-com/http233-router-go</a></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

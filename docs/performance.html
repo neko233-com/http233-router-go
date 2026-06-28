@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance — http233-router-go</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="logo" href="index.html">http233-router-go</a>
+      <span class="logo-sub">Go HTTP Router</span>
+      <div class="nav-section">Documentation</div>
+      <a class="nav-link" href="index.html">Overview</a>
+      <a class="nav-link" href="guide.html">Getting Started</a>
+      <a class="nav-link" href="api.html">API Reference</a>
+      <a class="nav-link active" href="performance.html">Performance</a>
+      <div class="nav-section">Links</div>
+      <a class="nav-link" href="https://github.com/neko233-com/http233-router-go">GitHub</a>
+      <a class="nav-link" href="https://pkg.go.dev/github.com/neko233-com/http233-router-go">pkg.go.dev</a>
+    </aside>
+
+    <main>
+      <h1>Performance</h1>
+      <p class="lead">http233-router-go targets high throughput with minimal hot-path allocations while providing a full Gin-like feature set.</p>
+
+      <h2>Design</h2>
+      <ul>
+        <li><strong>Radix tree</strong> — compressed prefix matching with static-before-param priority.</li>
+        <li><strong>Context pooling</strong> — <code>sync.Pool</code> reuses Context, params, and handler buffers.</li>
+        <li><strong>Pre-built chains</strong> — group middleware compiled at registration, not per request.</li>
+        <li><strong>Fast path</strong> — no middleware → direct handler invocation.</li>
+      </ul>
+
+      <h2>Benchmarks</h2>
+      <p>Benchmarks use direct TCP sockets (full HTTP read/write cycle), comparable to real server load:</p>
+      <pre><code>go test -bench=. -benchmem ./...
+go test -run TestFasterThanHttpRouter -v ./...</code></pre>
+
+      <h2>Comparison with httprouter</h2>
+      <p>Automated test <code>TestFasterThanHttpRouter</code> compares parallel QPS against <a href="https://github.com/julienschmidt/httprouter">julienschmidt/httprouter</a> with equivalent handlers.</p>
+      <table>
+        <thead><tr><th>Scenario</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Static routes (100 routes)</td><td>Comparable or faster QPS on parallel TCP benchmark</td></tr>
+          <tr><td>Parameter routes</td><td><code>:id</code> extraction with Context reuse</td></tr>
+          <tr><td>Business API (100+ routes)</td><td>Middleware + groups included in integration suite</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Trade-offs</h2>
+      <p>http233 adds a Context layer and middleware chain compared to bare httprouter. The extra ~3 allocs/op buy Gin-style ergonomics (middleware, JSON helpers, groups). For routing-only micro-benchmarks with identical handlers, QPS remains competitive.</p>
+
+      <h2>CI</h2>
+      <p>Every push to <code>main</code> runs the full test suite including performance validation. See <a href="https://github.com/neko233-com/http233-router-go/actions">GitHub Actions</a>.</p>
+
+      <div class="footer">
+        <p><a href="index.html">Back to Overview</a></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
