@@ -58,9 +58,7 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 	prefixLen := slot.findLongestPrefix(path)
 
 	if prefixLen == 0 && slot.prefixLen > 0 {
-		child := r.allocateNode(nodeStatic, path)
-		slot.addChild(child)
-		child.setHandler(method, handler)
+		r.createChildOrRecurse(slot, method, path, handler)
 		return
 	}
 
@@ -98,9 +96,7 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 		if prefixLen == uint8(len(path)) {
 			slot.setHandler(method, handler)
 		} else {
-			newChild := r.allocateNode(nodeStatic, path[prefixLen:])
-			slot.addChild(newChild)
-			newChild.setHandler(method, handler)
+			r.createChildOrRecurse(slot, method, path[prefixLen:], handler)
 		}
 		return
 	}
@@ -119,9 +115,7 @@ func (r *Router) insertRoute(slot *node, method, path string, handler handlerFun
 		}
 	}
 
-	child := r.allocateNode(nodeStatic, path[prefixLen:])
-	slot.addChild(child)
-	child.setHandler(method, handler)
+	r.createChildOrRecurse(slot, method, path[prefixLen:], handler)
 }
 
 func (r *Router) allocateNode(nType nodeType, prefix string) *node {
@@ -131,4 +125,23 @@ func (r *Router) allocateNode(nType nodeType, prefix string) *node {
 	}
 	copy(n.prefix[:], prefix)
 	return n
+}
+
+func (r *Router) createChildOrRecurse(slot *node, method, path string, handler handlerFunc) {
+	splitIdx := -1
+	for i := 0; i < len(path); i++ {
+		if path[i] == ':' || path[i] == '*' {
+			splitIdx = i
+			break
+		}
+	}
+	if splitIdx > 0 {
+		child := r.allocateNode(nodeStatic, path[:splitIdx])
+		slot.addChild(child)
+		r.insertRoute(child, method, path[splitIdx:], handler)
+	} else {
+		child := r.allocateNode(nodeStatic, path)
+		slot.addChild(child)
+		child.setHandler(method, handler)
+	}
 }

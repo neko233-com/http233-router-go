@@ -217,3 +217,70 @@ func TestHandler(t *testing.T) {
 		t.Errorf("status = %d, want 200", w.Code)
 	}
 }
+
+func TestStaticRoutes(t *testing.T) {
+	router := New()
+
+	router.GET("/", func(c *Context) {
+		c.String(200, "home")
+	})
+
+	router.GET("/users", func(c *Context) {
+		c.String(200, "users")
+	})
+
+	router.GET("/api/v1/users", func(c *Context) {
+		c.String(200, "api users")
+	})
+
+	tests := []struct {
+		path     string
+		expected string
+	}{
+		{"/", "home"},
+		{"/users", "users"},
+		{"/api/v1/users", "api users"},
+	}
+
+	for _, test := range tests {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", test.path, nil)
+
+		router.ServeHTTP(w, req)
+
+		if w.Body.String() != test.expected {
+			t.Errorf("GET %s: expected %s, got %s", test.path, test.expected, w.Body.String())
+		}
+	}
+}
+
+func TestParameterRoutes(t *testing.T) {
+	router := New()
+
+	router.GET("/users/:id", func(c *Context) {
+		c.String(200, "user %s", c.Param("id"))
+	})
+
+	router.GET("/files/*path", func(c *Context) {
+		c.String(200, "file %s", c.Param("path"))
+	})
+
+	tests := []struct {
+		path     string
+		expected string
+	}{
+		{"/users/123", "user 123"},
+		{"/files/documents/readme.md", "file documents/readme.md"},
+	}
+
+	for _, test := range tests {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", test.path, nil)
+
+		router.ServeHTTP(w, req)
+
+		if w.Body.String() != test.expected {
+			t.Errorf("GET %s: expected %s, got %s", test.path, test.expected, w.Body.String())
+		}
+	}
+}
